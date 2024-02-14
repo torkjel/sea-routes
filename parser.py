@@ -66,7 +66,7 @@ def single_location_parser(loc):
     return port_name, location, junctions, ports
 
 def normalize_name(name):
-    name_split = name.split(",")
+    name_split = name.replace(";", ",").split(",")
     port_name = name_split[0].strip()
     port_name_split = port_name.split("(")
     port_name_short = port_name_split[0].strip().rstrip(";")
@@ -99,12 +99,13 @@ with open("PUB151_distances.csv", 'w') as out:
     for port in ports[:]:
         n,l,j,p = single_location_parser(port)
         port_name, port_name_short, port_name_detail, country_name, country_name_short, country_name_detail = normalize_name(n)
-        port_part = n.strip() + ";" + port_name + ";" + port_name_short + ";" + port_name_detail + ";" + country_name + ";" + country_name_short + ";" + country_name_detail + ";" + l
+        port_part = n.replace(";", ",").strip() + ";" + port_name + ";" + port_name_short + ";" + port_name_detail + ";" + country_name + ";" + country_name_short + ";" + country_name_detail + ";" + l
         for junction in j:
             if not isinstance(junction, str):
                 port_name, port_name_short, port_name_detail, country_name, country_name_short, country_name_detail = normalize_name(junction["name"])
-                out.write(port_part + ";junction;" + junction["name"].strip() + ";" + port_name + ";" + port_name_short + ";" + port_name_detail + ";" + country_name + ";" + country_name_short + ";" + country_name_detail + ";" + str(junction["distance"]) + "\n")
+                out.write(port_part + ";junction;" + junction["name"].replace(";", ",").strip() + ";" + port_name + ";" + port_name_short + ";" + port_name_detail + ";" + country_name + ";" + country_name_short + ";" + country_name_detail + ";" + str(junction["distance"]) + "\n")
 
         for dest in p:
-            if not isinstance(junction, str):
-                out.write(port_part + ";port;" + dest["name"].strip() + ";" + port_name + ";" + port_name_short + ";" + port_name_detail + ";" + country_name + ";" + country_name_short + ";" + country_name_detail + ";" + str(dest["distance"]) + "\n")
+            if not isinstance(dest, str):
+                port_name, port_name_short, port_name_detail, country_name, country_name_short, country_name_detail = normalize_name(dest["name"])
+                out.write(port_part + ";port;" + dest["name"].replace(";", ",").strip() + ";" + port_name + ";" + port_name_short + ";" + port_name_detail + ";" + country_name + ";" + country_name_short + ";" + country_name_detail + ";" + str(dest["distance"]) + "\n")
