@@ -27,8 +27,8 @@ def parse_destinations(ports):
         # print(ports[0])
         dist_pattern = re.compile('\d+,*\d+')
         name_pattern = re.compile('\D+')
-        ports = [(name_pattern.search(x).group(0).strip()[:-1], dist_pattern.search(x).group(0).replace(',','')) for x in ports]
-        ports = {x[0]:float(x[1]) for x in ports}
+        ports = [{"name": name_pattern.search(x).group(0).strip()[:-1], "distance": float(dist_pattern.search(x).group(0).replace(',',''))} for x in ports]
+        #ports = {x[0]:float(x[1]) for x in ports}
     return ports
 
 def single_location_parser(loc):
@@ -60,14 +60,51 @@ def single_location_parser(loc):
         # print('Special case?')
         ports = 'Special case'
         pass
-    
+
     junctions = parse_destinations(junctions)
     ports = parse_destinations(ports)
     return port_name, location, junctions, ports
 
+def normalize_name(name):
+    name_split = name.split(",")
+    port_name = name_split[0].strip()
+    port_name_split = port_name.split("(")
+    port_name_short = port_name_split[0].strip().rstrip(";")
+    port_name_detail = ""
+    if len(port_name_split) > 1:
+        port_name_detail = port_name_split[1].strip().rstrip(")").lstrip("(").strip().rstrip(";")
+
+    if len(name_split) > 1:
+        country_name = name_split[1].strip().rstrip(";")
+    else:
+        country_name = ""
+
+    country_name_split = country_name.split("(")
+    country_name_short = country_name_split[0].strip().rstrip(";")
+    country_name_detail = ""
+    if len(country_name_split) > 1:
+        country_name_detail = country_name_split[1].strip().rstrip(")").lstrip("(").strip().rstrip(";")
+    return port_name, port_name_short, port_name_detail, country_name, country_name_short, country_name_detail
+
 with open("PUB151_distances.json", 'w') as out:
-    a = {}
+    a = []
     for port in ports[:]:
         n,l,j,p = single_location_parser(port)
-        a[n] = {"location":l, "junctions":j, "destinations":p}
+        a.append({"name":n, "location":l, "junctions":j, "destinations":p})
     out.write(json.dumps(a, indent=2, encoding="utf-8", ensure_ascii=False, sort_keys=True))
+
+with open("PUB151_distances.csv", 'w') as out:
+    a = []
+    out.write("full_name;port_name;port_name_short;port_name_details;country_name;country_name_short;country_name_details;location;type;dest_full_name;dest_port_name;dest_port_name_short;dest_port_name_details;dest_country_name;dest_country_name_short;dest_country_name_details;distance\n")
+    for port in ports[:]:
+        n,l,j,p = single_location_parser(port)
+        port_name, port_name_short, port_name_detail, country_name, country_name_short, country_name_detail = normalize_name(n)
+        port_part = n.strip() + ";" + port_name + ";" + port_name_short + ";" + port_name_detail + ";" + country_name + ";" + country_name_short + ";" + country_name_detail + ";" + l
+        for junction in j:
+            if not isinstance(junction, str):
+                port_name, port_name_short, port_name_detail, country_name, country_name_short, country_name_detail = normalize_name(junction["name"])
+                out.write(port_part + ";junction;" + junction["name"].strip() + ";" + port_name + ";" + port_name_short + ";" + port_name_detail + ";" + country_name + ";" + country_name_short + ";" + country_name_detail + ";" + str(junction["distance"]) + "\n")
+
+        for dest in p:
+            if not isinstance(junction, str):
+                out.write(port_part + ";port;" + dest["name"].strip() + ";" + port_name + ";" + port_name_short + ";" + port_name_detail + ";" + country_name + ";" + country_name_short + ";" + country_name_detail + ";" + str(dest["distance"]) + "\n")
